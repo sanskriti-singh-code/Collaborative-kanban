@@ -1,0 +1,20 @@
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Python / Django
+backend/venv/
+backend/__pycache__/
+backend/*.sqlite3
+backend/staticfiles/
+
+# Node.js / React
+frontend/node_modules/
+frontend/build/
+frontend/dist/
+frontend/.vite/
+npm-debug.log
