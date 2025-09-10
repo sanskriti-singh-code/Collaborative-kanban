@@ -33,5 +33,4 @@ COPY --from=frontend-builder /app/frontend/dist ./staticfiles
 # Expose the port the app will run on
 EXPOSE 8000
 
-# The command to run the Daphne ASGI server in production
-CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "core.asgi:application"]
+CMD python manage.py migrate && daphne -b 0.0.0.0 -p 8000 core.asgi:application
