@@ -17,7 +17,8 @@ import {
 } from '@tabler/icons-react';
 
 // --- DYNAMIC URLS ---
-const username = prompt("Please enter your name for this session:", "user" + Math.floor(Math.random() * 100));
+// Generates a random guest name automatically for each session
+const username = "Guest" + Math.floor(Math.random() * 1000);
 const isProduction = import.meta.env.PROD;
 const API_BASE_URL = isProduction ? '' : 'http://localhost:8000';
 const WS_BASE_URL = isProduction ? `wss://${window.location.host}` : 'ws://localhost:8000';
