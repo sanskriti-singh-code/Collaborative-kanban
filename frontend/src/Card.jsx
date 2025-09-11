@@ -1,32 +1,106 @@
 import React from 'react';
 import { Draggable } from 'react-beautiful-dnd';
-import { Paper, Text, Group, ActionIcon } from '@mantine/core';
-import { GripVertical } from 'tabler-icons-react'; // Import an icon for the handle
+import { Paper, Text, Group, ActionIcon, Badge, Stack } from '@mantine/core';
+import { IconGripVertical, IconCalendar, IconUser } from '@tabler/icons-react';
 
 export function Card({ card, index, onClick }) {
+  const formatDate = (dateString) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+
+  const isOverdue = (dateString) => {
+    if (!dateString) return false;
+    const dueDate = new Date(dateString);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return dueDate < today;
+  };
+
   return (
     <Draggable draggableId={String(card.id)} index={index}>
-      {(provided) => (
+      {(provided, snapshot) => (
         <Paper
-          shadow="sm"
-          p="sm"
+          shadow={snapshot.isDragging ? "lg" : "sm"}
+          p="md"
           mb="sm"
           ref={provided.innerRef}
-          {...provided.draggableProps} 
+          {...provided.draggableProps}
+          className={`card ${snapshot.isDragging ? 'dragging' : ''}`}
+          style={{
+            ...provided.draggableProps.style,
+            transform: snapshot.isDragging 
+              ? `${provided.draggableProps.style?.transform} rotate(3deg)`
+              : provided.draggableProps.style?.transform,
+          }}
         >
-          <Group position="apart" >
-            {/* This div is now the clickable area */}
-            <div onClick={onClick} style={{ cursor: 'pointer', flexGrow: 1 }}>
-              <Text>{card.title}</Text>
+          <div className="card-content">
+            <div className="card-main" onClick={onClick}>
+              <Stack spacing="xs">
+                <Text 
+                  className="card-title" 
+                  weight={600} 
+                  size="sm"
+                  lineClamp={2}
+                >
+                  {card.title}
+                </Text>
+                
+                {card.description && (
+                  <Text 
+                    className="card-description" 
+                    size="xs" 
+                    color="dimmed"
+                    lineClamp={3}
+                  >
+                    {card.description}
+                  </Text>
+                )}
+
+                {/* Card Meta Information */}
+                <Group position="apart" mt="xs">
+                  <Group spacing="xs">
+                    {card.due_date && (
+                      <Badge 
+                        size="xs" 
+                        variant="outline"
+                        color={isOverdue(card.due_date) ? "red" : "blue"}
+                        leftSection={<IconCalendar size={10} />}
+                      >
+                        {formatDate(card.due_date)}
+                      </Badge>
+                    )}
+                  </Group>
+                  
+                  <Group spacing="xs">
+                    {card.created_at && (
+                      <Text size="xs" color="dimmed">
+                        {formatDate(card.created_at)}
+                      </Text>
+                    )}
+                  </Group>
+                </Group>
+              </Stack>
             </div>
 
-            {/* This div is the dedicated drag handle */}
-            <div {...provided.dragHandleProps}>
-              <ActionIcon variant="transparent" size="lg">
-                <GripVertical size={20} />
+            {/* Drag Handle */}
+            <div 
+              {...provided.dragHandleProps}
+              className="drag-handle"
+            >
+              <ActionIcon 
+                variant="transparent" 
+                size="sm"
+                style={{ opacity: 0.6 }}
+              >
+                <IconGripVertical size={16} />
               </ActionIcon>
             </div>
-          </Group>
+          </div>
         </Paper>
       )}
     </Draggable>

@@ -1,37 +1,3 @@
-/* .board {
-  display: flex;
-  gap: 16px;
-  padding: 16px;
-  overflow-x: auto;
-}
-.column {
-  background-color: #f4f5f7;
-  border-radius: 8px;
-  width: 300px;
-  padding: 8px;
-  flex-shrink: 0;
-}
-.card-container {
-  min-height: 100px;
-}
-.card {
-  background-color: white;
-  border-radius: 4px;
-  padding: 12px;
-  margin-bottom: 8px;
-  box-shadow: 0 1px 0 rgba(9,30,66,.25);
-}
-
-.connection-status {
-  position: fixed;
-  top: 10px;
-  right: 10px;
-  background-color: #eee;
-  padding: 5px 10px;
-  border-radius: 5px;
-  font-size: 14px;
-} */
-
 /* Enhanced Kanban Board Styles */
 * {
   box-sizing: border-box;
@@ -61,6 +27,12 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  transition: all 0.3s ease;
+}
+
+.app-header:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
 }
 
 .header-left {
@@ -74,12 +46,18 @@ body {
   font-weight: 700;
   color: #2d3748;
   margin: 0;
+  transition: all 0.2s ease;
+}
+
+.board-title:hover {
+  color: #667eea;
 }
 
 .board-subtitle {
   font-size: 0.9rem;
   color: #666;
   font-weight: 500;
+  margin-top: 0.25rem;
 }
 
 .header-right {
@@ -92,6 +70,15 @@ body {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  background: rgba(102, 126, 234, 0.1);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.presence-section:hover {
+  background: rgba(102, 126, 234, 0.15);
+  transform: scale(1.02);
 }
 
 .online-label {
@@ -167,6 +154,14 @@ body {
   background: linear-gradient(135deg, #38a169, #68d391); 
 }
 
+.column:nth-child(4)::before { 
+  background: linear-gradient(135deg, #9f7aea, #b794f6); 
+}
+
+.column:nth-child(5)::before { 
+  background: linear-gradient(135deg, #e53e3e, #fc8181); 
+}
+
 .column.drag-over {
   background: rgba(102, 126, 234, 0.1);
   border: 2px dashed #667eea;
@@ -176,7 +171,7 @@ body {
 .column-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 1.5rem;
   padding-bottom: 0.75rem;
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
@@ -186,10 +181,7 @@ body {
   font-size: 1.2rem;
   font-weight: 700;
   color: #2d3748;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0;
+  margin: 0 0 0.5rem 0;
 }
 
 .column-count {
@@ -201,6 +193,7 @@ body {
   font-weight: 600;
   min-width: 24px;
   text-align: center;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
 /* Cards Container */
@@ -212,6 +205,14 @@ body {
   gap: 1rem;
   padding-right: 0.5rem;
   min-height: 200px;
+  transition: all 0.3s ease;
+}
+
+.card-container.drag-over {
+  background: rgba(102, 126, 234, 0.05);
+  border-radius: 12px;
+  padding: 0.5rem;
+  border: 2px dashed rgba(102, 126, 234, 0.3);
 }
 
 .card-container::-webkit-scrollbar {
@@ -239,11 +240,29 @@ body {
   transition: all 0.3s ease;
   border: 2px solid transparent;
   position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.card:hover::before {
+  opacity: 1;
 }
 
 .card:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  border-color: rgba(102, 126, 234, 0.2);
 }
 
 .card.dragging {
@@ -272,6 +291,11 @@ body {
   line-height: 1.4;
   margin-bottom: 0.5rem;
   font-size: 1rem;
+  transition: color 0.2s ease;
+}
+
+.card:hover .card-title {
+  color: #667eea;
 }
 
 .card-description {
@@ -312,6 +336,9 @@ body {
   cursor: grab;
   padding: 0.25rem;
   border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .drag-handle:hover {
@@ -324,6 +351,32 @@ body {
 
 .card:hover .drag-handle {
   opacity: 1;
+}
+
+/* Add Card Button */
+.add-card-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  border: 2px dashed #cbd5e0;
+  border-radius: 12px;
+  background: transparent;
+  color: #a0aec0;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-top: 0.5rem;
+  min-height: 48px;
+}
+
+.add-card-btn:hover {
+  border-color: #667eea;
+  color: #667eea;
+  background: rgba(102, 126, 234, 0.05);
+  transform: translateY(-1px);
 }
 
 /* Connection Status */
@@ -343,6 +396,12 @@ body {
   z-index: 150;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   border: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.connection-status:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
 .connection-status.connected {
@@ -380,49 +439,53 @@ body {
   }
 }
 
-/* Add Card Button (if you want to add one) */
-.add-card-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 1rem;
-  border: 2px dashed #cbd5e0;
-  border-radius: 12px;
-  background: transparent;
-  color: #a0aec0;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 0.9rem;
-  font-weight: 500;
-  margin-top: 0.5rem;
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.add-card-btn:hover {
-  border-color: #667eea;
-  color: #667eea;
-  background: rgba(102, 126, 234, 0.05);
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* Modal Enhancements */
 .mantine-Modal-modal {
   border-radius: 16px !important;
   overflow: hidden;
+  animation: slideIn 0.3s ease-out;
+}
+
+.mantine-Modal-overlay {
+  backdrop-filter: blur(4px) !important;
 }
 
 .mantine-Modal-header {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
+  background: linear-gradient(135deg, #667eea, #764ba2) !important;
+  color: white !important;
   padding: 1.5rem !important;
 }
 
 .mantine-Modal-title {
   color: white !important;
   font-weight: 600 !important;
+  font-size: 1.2rem !important;
 }
 
 .mantine-Modal-close {
   color: white !important;
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-radius: 8px !important;
+}
+
+.mantine-Modal-close:hover {
+  background: rgba(255, 255, 255, 0.3) !important;
 }
 
 .mantine-Modal-body {
@@ -433,6 +496,11 @@ body {
 .mantine-Avatar-root {
   border: 2px solid white !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  transition: all 0.2s ease !important;
+}
+
+.mantine-Avatar-root:hover {
+  transform: scale(1.1) !important;
 }
 
 /* Button Enhancements */
@@ -449,16 +517,43 @@ body {
 
 /* Input Enhancements */
 .mantine-TextInput-input,
-.mantine-Textarea-input {
+.mantine-Textarea-input,
+.mantine-Select-input {
   border-radius: 8px !important;
   border: 2px solid #e2e8f0 !important;
   transition: all 0.2s !important;
 }
 
 .mantine-TextInput-input:focus,
-.mantine-Textarea-input:focus {
+.mantine-Textarea-input:focus,
+.mantine-Select-input:focus {
   border-color: #667eea !important;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
+}
+
+/* Badge Enhancements */
+.mantine-Badge-root {
+  font-weight: 600 !important;
+  border-radius: 6px !important;
+}
+
+/* Menu Enhancements */
+.mantine-Menu-dropdown {
+  border-radius: 12px !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.mantine-Menu-item {
+  border-radius: 8px !important;
+  margin: 2px 4px !important;
+}
+
+/* Notification Enhancements */
+.mantine-Notification-root {
+  border-radius: 12px !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+  animation: slideIn 0.3s ease-out;
 }
 
 /* Responsive Design */
@@ -476,6 +571,11 @@ body {
   
   .header-right {
     justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .presence-section {
+    padding: 0.5rem;
   }
   
   .column {
@@ -506,4 +606,37 @@ body {
   .board-title {
     font-size: 1.5rem;
   }
+  
+  .card-content {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .drag-handle {
+    align-self: flex-end;
+  }
+}
+
+/* Loading States */
+.loading-shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Error States */
+.error {
+  background: rgba(245, 101, 101, 0.1);
+  border: 2px solid rgba(245, 101, 101, 0.3);
+  color: #e53e3e;
+  padding: 1rem;
+  border-radius: 12px;
+  text-align: center;
+  font-weight: 600;
+  margin: 2rem;
 }
