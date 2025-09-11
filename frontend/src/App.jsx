@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import useWebSocket from 'react-use-websocket';
 import { DragDropContext, Droppable } from 'react-beautiful-dnd';
@@ -50,6 +50,7 @@ function App() {
   const [notification, setNotification] = useState(null);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [tempTitle, setTempTitle] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
   
   // Modal states
   const [cardModalOpened, { open: openCardModal, close: closeCardModal }] = useDisclosure(false);
@@ -60,7 +61,23 @@ function App() {
   const [selectedColumnForNewCard, setSelectedColumnForNewCard] = useState(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
   
-  const { lastJsonMessage, readyState } = useWebSocket(WS_URL);
+  // WebSocket with better options
+  const { lastJsonMessage, readyState, sendMessage } = useWebSocket(WS_URL, {
+    shouldReconnect: (closeEvent) => true,
+    reconnectInterval: 3000,
+    reconnectAttempts: 10,
+    onOpen: () => {
+      console.log('WebSocket connected');
+      showNotification('Connected to real-time updates', 'success');
+    },
+    onClose: () => {
+      console.log('WebSocket disconnected');
+      showNotification('Disconnected from real-time updates', 'error');
+    },
+    onError: (event) => {
+      console.error('WebSocket error:', event);
+    }
+  });
 
   // Forms
   const cardForm = useForm({
@@ -90,26 +107,32 @@ function App() {
     }
   }, [selectedCard]);
 
-  const fetchBoard = () => {
+  const fetchBoard = useCallback(() => {
+    // Don't fetch during drag operations
+    if (isDragging) return;
+    
     axios.get(`${API_URL}/boards/1/`)
       .then(response => setBoard(response.data))
       .catch(err => setError("Failed to load board. Is the server running?"));
-  };
+  }, [isDragging]);
 
   useEffect(() => { 
     fetchBoard(); 
-  }, []);
+  }, [fetchBoard]);
 
   useEffect(() => {
     if (lastJsonMessage) {
       if (lastJsonMessage.type === 'board_update') {
-        fetchBoard();
+        // Only refresh if not currently dragging
+        if (!isDragging) {
+          fetchBoard();
+        }
         showNotification(lastJsonMessage.message, 'success');
       } else if (lastJsonMessage.type === 'presence_update') {
         setOnlineUsers(lastJsonMessage.users);
       }
     }
-  }, [lastJsonMessage]);
+  }, [lastJsonMessage, fetchBoard, isDragging]);
 
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
@@ -133,6 +156,7 @@ function App() {
       .then(() => {
         closeCardModal();
         showNotification('Card updated successfully!');
+        // Don't call fetchBoard here, let WebSocket handle it
       })
       .catch(err => {
         console.error("Error updating card", err);
@@ -145,7 +169,7 @@ function App() {
       title: values.title,
       description: values.description,
       column: values.column,
-      order: 0 // You might want to calculate proper order
+      order: 0
     };
 
     axios.post(`${API_URL}/cards/`, cardData)
@@ -153,6 +177,7 @@ function App() {
         closeAddCardModal();
         newCardForm.reset();
         showNotification('Card created successfully!');
+        // Don't call fetchBoard here, let WebSocket handle it
       })
       .catch(err => {
         console.error("Error creating card", err);
@@ -164,7 +189,7 @@ function App() {
     const columnData = {
       title: values.title,
       board: board.id,
-      order: board.columns.length // Add to end
+      order: board.columns.length
     };
 
     axios.post(`${API_URL}/columns/`, columnData)
@@ -172,6 +197,7 @@ function App() {
         closeAddColumnModal();
         columnForm.reset();
         showNotification('Column created successfully!');
+        // Don't call fetchBoard here, let WebSocket handle it
       })
       .catch(err => {
         console.error("Error creating column", err);
@@ -186,6 +212,7 @@ function App() {
       .then(() => {
         closeCardModal();
         showNotification('Card deleted successfully!');
+        // Don't call fetchBoard here, let WebSocket handle it
       })
       .catch(err => {
         console.error("Error deleting card", err);
@@ -199,6 +226,7 @@ function App() {
     axios.delete(`${API_URL}/columns/${columnId}/`)
       .then(() => {
         showNotification('Column deleted successfully!');
+        // Don't call fetchBoard here, let WebSocket handle it
       })
       .catch(err => {
         console.error("Error deleting column", err);
@@ -217,6 +245,7 @@ function App() {
         .then(() => {
           setIsEditingTitle(false);
           showNotification('Board title updated!');
+          // Don't call fetchBoard here, let WebSocket handle it
         })
         .catch(err => {
           console.error("Error updating board title", err);
@@ -230,7 +259,13 @@ function App() {
     setTempTitle('');
   };
 
+  const onDragStart = () => {
+    setIsDragging(true);
+  };
+
   const onDragEnd = (result) => {
+    setIsDragging(false);
+    
     const { source, destination, draggableId } = result;
     if (!destination) return;
 
@@ -238,6 +273,20 @@ function App() {
     const destColumn = board.columns.find(col => String(col.id) === destination.droppableId);
     if (!sourceColumn || !destColumn) return;
 
+    // Only update server if moving between columns
+    if (source.droppableId !== destination.droppableId) {
+      axios.patch(`${API_URL}/cards/${draggableId}/`, { column: destColumn.id })
+        .then(() => {
+          // Success - WebSocket will handle the update
+        })
+        .catch(err => {
+          console.error("Error moving card! Reverting.", err);
+          fetchBoard(); // Revert on error
+          showNotification('Error moving card', 'error');
+        });
+    }
+
+    // Optimistic UI update for immediate feedback
     const sourceCards = Array.from(sourceColumn.cards);
     const [movedCard] = sourceCards.splice(source.index, 1);
     const newBoardState = { ...board };
@@ -257,13 +306,6 @@ function App() {
         return col;
       });
       setBoard({ ...newBoardState, columns: newColumns });
-      
-      axios.patch(`${API_URL}/cards/${draggableId}/`, { column: destColumn.id })
-        .catch(err => {
-          console.error("Error moving card! Reverting.", err);
-          fetchBoard();
-          showNotification('Error moving card', 'error');
-        });
     }
   };
 
@@ -275,7 +317,7 @@ function App() {
     }
   };
 
-  const connectionStatus = { 0: 'Connecting', 1: 'Connected', 2: 'Closing', 3: 'Disconnected' }[readyState];
+  const connectionStatus = { 0: 'Connecting...', 1: 'Connected', 2: 'Closing', 3: 'Reconnecting...' }[readyState];
   
   if (error) return <div className="error">{error}</div>;
   if (!board) return <div>Loading board...</div>;
@@ -372,7 +414,7 @@ function App() {
         </form>
       </Modal>
 
-      <DragDropContext onDragEnd={onDragEnd}>
+      <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
         <div className="app">
           {/* Header */}
           <div className="app-header">
