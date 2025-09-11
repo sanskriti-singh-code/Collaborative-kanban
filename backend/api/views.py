@@ -3,15 +3,44 @@ from .models import Board, Column, Card, AuditLog
 from .serializers import BoardSerializer, ColumnSerializer, CardSerializer
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+import json
 
+def broadcast_event(board_id, event_type, data):
+    """Helper function to broadcast events to a board group."""
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f'board_{board_id}',
+        {
+            'type': 'broadcast_event',
+            'event': {
+                'type': event_type,
+                'payload': data
+            }
+        }
+    )
 
 class BoardViewSet(viewsets.ModelViewSet):
     queryset = Board.objects.all()
     serializer_class = BoardSerializer
 
+    def perform_update(self, serializer):
+        board = serializer.save()
+        broadcast_event(board.id, 'BOARD_UPDATED', serializer.data)
+
 class ColumnViewSet(viewsets.ModelViewSet):
     queryset = Column.objects.all()
     serializer_class = ColumnSerializer
+
+    def perform_create(self, serializer):
+        column = serializer.save()
+        broadcast_event(column.board.id, 'COLUMN_CREATED', serializer.data)
+
+    def perform_destroy(self, instance):
+        board_id = instance.board.id
+        column_id = instance.id
+        instance.delete()
+        broadcast_event(board_id, 'COLUMN_DELETED', {'columnId': column_id})
+
 
 class CardViewSet(viewsets.ModelViewSet):
     queryset = Card.objects.all()
@@ -19,65 +48,15 @@ class CardViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         card = serializer.save()
-        board = card.column.board
-        channel_layer = get_channel_layer()
-
-        # Create Audit Log for card creation
-        AuditLog.objects.create(
-            board=board,
-            action="Card Created",
-            details=f'Card "{card.title}" was created in column "{card.column.title}".'
-        )
-        
-        # Broadcast WebSocket message
-        async_to_sync(channel_layer.group_send)(
-            f'board_{board.id}',
-            {'type': 'board_update', 'message': f'New card "{card.title}" was added!'}
-        )
+        broadcast_event(card.column.board.id, 'CARD_CREATED', serializer.data)
 
     def perform_update(self, serializer):
-        old_card = self.get_object()
-        old_column_title = old_card.column.title
-        
-        new_card = serializer.save()
-        board = new_card.column.board
-        channel_layer = get_channel_layer()
-        
-        # Create a detailed Audit Log for card updates/moves
-        details = f'Card "{new_card.title}" was updated.'
-        if new_card.column.title != old_column_title:
-            details = f'Card "{new_card.title}" was moved from "{old_column_title}" to "{new_card.column.title}".'
-
-        AuditLog.objects.create(
-            board=board,
-            action="Card Updated",
-            details=details
-        )
-        
-        # Broadcast WebSocket message
-        async_to_sync(channel_layer.group_send)(
-            f'board_{board.id}',
-            {'type': 'board_update', 'message': f'Card "{new_card.title}" was updated!'}
-        )
+        card = serializer.save()
+        broadcast_event(card.column.board.id, 'CARD_UPDATED', serializer.data)
 
     def perform_destroy(self, instance):
-        board = instance.column.board
-        card_title = instance.title
-        column_title = instance.column.title
-        channel_layer = get_channel_layer()
-        
-        # Create Audit Log before deleting
-        AuditLog.objects.create(
-            board=board,
-            action="Card Deleted",
-            details=f'Card "{card_title}" was deleted from column "{column_title}".'
-        )
-
-        # Delete the instance from the database
+        board_id = instance.column.board.id
+        card_id = instance.id
+        column_id = instance.column.id
         instance.delete()
-
-        # Broadcast WebSocket message
-        async_to_sync(channel_layer.group_send)(
-            f'board_{board.id}',
-            {'type': 'board_update', 'message': f'Card "{card_title}" was deleted!'}
-        )
+        broadcast_event(board_id, 'CARD_DELETED', {'cardId': card_id, 'columnId': column_id})
